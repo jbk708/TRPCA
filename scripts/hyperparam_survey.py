@@ -14,12 +14,8 @@ from datetime import datetime
 import pandas as pd
 import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import threading
 import os
 
-
-# Thread-safe results storage
-results_lock = threading.Lock()
 
 
 def run_experiment(args_tuple):
@@ -79,11 +75,22 @@ def run_experiment(args_tuple):
                 "run_name": run_name
             }
         else:
+            # Save stderr for debugging
+            stderr_file = output_dir / "stderr.log"
+            if result.stderr:
+                with open(stderr_file, 'w') as f:
+                    f.write(result.stderr)
+            stdout_file = output_dir / "stdout.log"
+            if result.stdout:
+                with open(stdout_file, 'w') as f:
+                    f.write(result.stdout)
+
+            error_msg = result.stderr[-1000:] if result.stderr else "No metrics file created (check stderr.log)"
             print(f"[Worker {worker_id}] Failed: {run_name}")
             return {
                 **config,
                 "status": "failed",
-                "error": result.stderr[:500] if result.stderr else "No metrics file created",
+                "error": error_msg,
                 "output_dir": str(output_dir),
                 "run_name": run_name
             }
