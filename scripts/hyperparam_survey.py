@@ -130,8 +130,8 @@ def main():
                         help="Projection dimensions to try")
     parser.add_argument("--batch-sizes", nargs="+", type=int, default=[64, 128],
                         help="Batch sizes to try")
-    parser.add_argument("--epochs", type=int, default=1000,
-                        help="Max epochs per run (uses early stopping)")
+    parser.add_argument("--epochs", type=int, default=20,
+                        help="Epochs per run (default: 20, matching utils.py)")
 
     args = parser.parse_args()
 
