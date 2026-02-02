@@ -57,7 +57,7 @@ uv venv .venv --python 3.11
 source .venv/bin/activate
 
 # Install build dependencies first (required for gemelli/iow/h5py/scikit-bio)
-uv pip install "numpy<2" setuptools wheel Cython pkgconfig
+uv pip install "numpy<2" "h5py<3.11" setuptools wheel Cython pkgconfig
 
 # Install TRPCA with all dependencies
 uv pip install -e . --no-build-isolation

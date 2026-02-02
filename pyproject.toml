@@ -33,6 +33,7 @@ dependencies = [
     "gemelli",
     "scikit-bio<0.6",
     "scipy<1.11",
+    "h5py<3.11",
     "matplotlib",
     "seaborn",
     "shap",
