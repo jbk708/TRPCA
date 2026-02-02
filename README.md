@@ -33,6 +33,16 @@ A PyTorch-based framework for analyzing microbiome data using normalized transfo
 - Python 3.8-3.11 (required due to gemelli/scikit-bio dependencies)
 - PyTorch 1.8+
 
+### Linux System Dependencies
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install libhdf5-dev pkg-config
+
+# RHEL/CentOS/Fedora
+sudo dnf install hdf5-devel pkgconfig
+```
+
 ## Installation
 
 ### Using uv (recommended)
@@ -46,8 +56,8 @@ cd TRPCA
 uv venv .venv --python 3.11
 source .venv/bin/activate
 
-# Install build dependencies first (required for gemelli/iow)
-uv pip install numpy setuptools wheel Cython
+# Install build dependencies first (required for gemelli/iow/h5py)
+uv pip install numpy setuptools wheel Cython pkgconfig
 
 # Install TRPCA with all dependencies
 uv pip install -e . --no-build-isolation
