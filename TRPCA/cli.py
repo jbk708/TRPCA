@@ -19,13 +19,24 @@ def get_device(device: str) -> str:
 
 
 def load_feature_table(path: str) -> pd.DataFrame:
-    """Load feature table from CSV or BIOM file."""
+    """Load feature table from CSV, TSV, or BIOM file."""
     path = Path(path)
     if path.suffix == '.biom':
         from biom import load_table
         table = load_table(str(path))
         df = table.to_dataframe(dense=True).T.astype(int)
         return df
+    elif path.suffix == '.tsv':
+        return pd.read_csv(path, sep='\t', index_col=0)
+    else:
+        return pd.read_csv(path, index_col=0)
+
+
+def load_metadata(path: str) -> pd.DataFrame:
+    """Load metadata from CSV or TSV file."""
+    path = Path(path)
+    if path.suffix == '.tsv':
+        return pd.read_csv(path, sep='\t', index_col=0)
     else:
         return pd.read_csv(path, index_col=0)
 
@@ -41,7 +52,7 @@ def cli():
 @click.option('--features', '-f', required=True, type=click.Path(exists=True),
               help='Path to feature table (CSV or BIOM format)')
 @click.option('--metadata', '-m', required=True, type=click.Path(exists=True),
-              help='Path to metadata CSV')
+              help='Path to metadata (CSV or TSV format)')
 @click.option('--target', '-t', required=True, help='Target column name in metadata for regression')
 @click.option('--output', '-o', default='.', type=click.Path(),
               help='Output directory for results')
@@ -74,7 +85,7 @@ def train(features, metadata, target, output, num_pcs, hidden_dim, num_layers,
     # Load data
     click.echo("Loading data...")
     df = load_feature_table(features)
-    meta = pd.read_csv(metadata, index_col=0)
+    meta = load_metadata(metadata)
     y = meta[target]
 
     # Get stratify and group columns if specified
@@ -164,7 +175,7 @@ def train(features, metadata, target, output, num_pcs, hidden_dim, num_layers,
 @click.option('--features', '-f', required=True, type=click.Path(exists=True),
               help='Path to feature table (CSV or BIOM format)')
 @click.option('--metadata', '-m', required=True, type=click.Path(exists=True),
-              help='Path to metadata CSV')
+              help='Path to metadata (CSV or TSV format)')
 @click.option('--reg-target', '-r', required=True, help='Regression target column name')
 @click.option('--cls-target', '-c', required=True, help='Classification target column name')
 @click.option('--output', '-o', default='.', type=click.Path(),
@@ -198,7 +209,7 @@ def train_mtl(features, metadata, reg_target, cls_target, output, num_pcs, hidde
     # Load data
     click.echo("Loading data...")
     df = load_feature_table(features)
-    meta = pd.read_csv(metadata, index_col=0)
+    meta = load_metadata(metadata)
     y_reg = meta[reg_target]
     y_cls = meta[cls_target]
 
@@ -361,7 +372,7 @@ def analyze(model, train_loader, test_loader, features, output, device):
 @click.option('--features', '-f', required=True, type=click.Path(exists=True),
               help='Path to feature table CSV')
 @click.option('--metadata', '-m', required=True, type=click.Path(exists=True),
-              help='Path to metadata CSV')
+              help='Path to metadata (CSV or TSV format)')
 @click.option('--target', '-t', required=True, help='Target column name')
 @click.option('--model-path', required=True, type=click.Path(exists=True),
               help='Path to saved TRPCA model (.pt file)')
@@ -386,8 +397,8 @@ def compare(features, metadata, target, model_path, output, device):
 
     # Load data
     click.echo("Loading data...")
-    df = pd.read_csv(features, index_col=0)
-    meta = pd.read_csv(metadata, index_col=0)
+    df = load_feature_table(features)
+    meta = load_metadata(metadata)
     y = meta[target]
 
     # Load saved model info
