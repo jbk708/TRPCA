@@ -57,7 +57,7 @@ uv venv .venv --python 3.11
 source .venv/bin/activate
 
 # Install build dependencies first
-uv pip install "numpy<2" "h5py<3.11" setuptools wheel Cython pkgconfig meson-python meson ninja pybind11
+uv pip install "numpy<2" "scipy<1.11" "h5py<3.11" setuptools wheel Cython pkgconfig meson-python meson ninja pybind11
 
 # Install TRPCA with all dependencies
 uv pip install -e . --no-build-isolation
