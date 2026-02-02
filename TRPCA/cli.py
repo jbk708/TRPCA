@@ -18,6 +18,18 @@ def get_device(device: str) -> str:
     return device
 
 
+def load_feature_table(path: str) -> pd.DataFrame:
+    """Load feature table from CSV or BIOM file."""
+    path = Path(path)
+    if path.suffix == '.biom':
+        from biom import load_table
+        table = load_table(str(path))
+        df = table.to_dataframe(dense=True).T.astype(int)
+        return df
+    else:
+        return pd.read_csv(path, index_col=0)
+
+
 @click.group()
 @click.version_option(version='0.1.0')
 def cli():
@@ -27,7 +39,7 @@ def cli():
 
 @cli.command()
 @click.option('--features', '-f', required=True, type=click.Path(exists=True),
-              help='Path to feature table CSV (samples as rows, features as columns)')
+              help='Path to feature table (CSV or BIOM format)')
 @click.option('--metadata', '-m', required=True, type=click.Path(exists=True),
               help='Path to metadata CSV')
 @click.option('--target', '-t', required=True, help='Target column name in metadata for regression')
@@ -61,7 +73,7 @@ def train(features, metadata, target, output, num_pcs, hidden_dim, num_layers,
 
     # Load data
     click.echo("Loading data...")
-    df = pd.read_csv(features, index_col=0)
+    df = load_feature_table(features)
     meta = pd.read_csv(metadata, index_col=0)
     y = meta[target]
 
@@ -150,7 +162,7 @@ def train(features, metadata, target, output, num_pcs, hidden_dim, num_layers,
 
 @cli.command()
 @click.option('--features', '-f', required=True, type=click.Path(exists=True),
-              help='Path to feature table CSV (samples as rows, features as columns)')
+              help='Path to feature table (CSV or BIOM format)')
 @click.option('--metadata', '-m', required=True, type=click.Path(exists=True),
               help='Path to metadata CSV')
 @click.option('--reg-target', '-r', required=True, help='Regression target column name')
@@ -185,7 +197,7 @@ def train_mtl(features, metadata, reg_target, cls_target, output, num_pcs, hidde
 
     # Load data
     click.echo("Loading data...")
-    df = pd.read_csv(features, index_col=0)
+    df = load_feature_table(features)
     meta = pd.read_csv(metadata, index_col=0)
     y_reg = meta[reg_target]
     y_cls = meta[cls_target]
