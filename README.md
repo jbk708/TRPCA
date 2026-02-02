@@ -5,7 +5,7 @@
 
 A PyTorch-based framework for analyzing microbiome data using normalized transformers with multi-task learning capabilities. This framework supports both single-task regression and multi-task learning (regression + classification) scenarios.
 
-## 🌟 Features
+## Features
 
 - **Normalized Transformer Architecture**
   - Custom transformer blocks with normalization layers
@@ -28,12 +28,12 @@ A PyTorch-based framework for analyzing microbiome data using normalized transfo
   - Performance visualization
   - Comprehensive evaluation metrics
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Python 3.8-3.11 (required due to gemelli/scikit-bio dependencies)
 - PyTorch 1.8+
 
-## 🛠️ Installation
+## Installation
 
 ### Using uv (recommended)
 
@@ -64,7 +64,7 @@ cd TRPCA
 pip install -e .
 ```
 
-## 🖥️ Command Line Interface
+## Command Line Interface
 
 TRPCA includes a CLI for training and evaluation:
 
@@ -81,7 +81,7 @@ trpca train -f data/features.csv -m data/metadata.csv -t target --use-optuna --n
 
 Run `trpca --help` for all available options.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Single-Task Regression
 
@@ -174,7 +174,7 @@ metrics, predictions, eval_fig = predict_and_evaluate_mtl(
 )
 ```
 
-## 📊 Model Architecture
+## Model Architecture
 
 ### Normalized Transformer
 - **Input Processing**: PCA-reduced features are projected to a higher dimension
@@ -187,7 +187,7 @@ metrics, predictions, eval_fig = predict_and_evaluate_mtl(
 - **Uncertainty Weighting**: Automatic task balancing using learnable parameters
 - **Task-Specific Heads**: Separate outputs for regression and classification
 
-## 🔍 Advanced Features
+## Advanced Features
 
 ### Feature Importance Analysis
 ```python
@@ -220,7 +220,7 @@ results, comparison_plot = compare_regressors(
 )
 ```
 
-## 📝 Citation
+## Citation
 
 If you use this framework in your research, please cite:
 
