@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trpca"
+version = "0.1.0"
+description = "Transformer-based Robust Principal Component Analysis for Microbiome Data"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "TRPCA Authors"}
+]
+keywords = ["microbiome", "transformer", "deep learning", "PCA", "multi-task learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "torch>=1.8",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "biom-format",
+    "gemelli",
+    "matplotlib",
+    "seaborn",
+    "shap",
+    "optuna",
+    "tqdm",
+    "click",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "jupyter",
+]
+
+[project.scripts]
+trpca = "TRPCA.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/jbk708/TRPCA"
+Repository = "https://github.com/jbk708/TRPCA"
+
+[tool.setuptools.packages.find]
+include = ["TRPCA*"]
