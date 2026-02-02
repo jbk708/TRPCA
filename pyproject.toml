@@ -7,7 +7,7 @@ name = "trpca"
 version = "0.1.0"
 description = "Transformer-based Robust Principal Component Analysis for Microbiome Data"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.8,<3.12"
 license = {text = "MIT"}
 authors = [
     {name = "TRPCA Authors"}
@@ -26,11 +26,13 @@ classifiers = [
 ]
 dependencies = [
     "torch>=1.8",
-    "numpy",
-    "pandas",
+    "numpy<2",
+    "pandas<2",
     "scikit-learn",
     "biom-format",
     "gemelli",
+    "scikit-bio<0.6",
+    "scipy<1.11",
     "matplotlib",
     "seaborn",
     "shap",

@@ -124,7 +124,11 @@ def train(features, metadata, target, output, num_pcs, hidden_dim, num_layers,
     click.echo(f"Saved metrics to {output_dir / 'metrics.json'}")
 
     # Save predictions
-    predictions.to_csv(output_dir / 'predictions.csv')
+    pred_df = pd.DataFrame({
+        'true': predictions['true_values'].flatten(),
+        'predicted': predictions['predicted_values'].flatten()
+    })
+    pred_df.to_csv(output_dir / 'predictions.csv', index=False)
     click.echo(f"Saved predictions to {output_dir / 'predictions.csv'}")
 
     # Save model
@@ -250,7 +254,13 @@ def train_mtl(features, metadata, reg_target, cls_target, output, num_pcs, hidde
     click.echo(f"Saved metrics to {output_dir / 'metrics.json'}")
 
     # Save predictions
-    predictions.to_csv(output_dir / 'predictions.csv')
+    pred_df = pd.DataFrame({
+        'reg_true': predictions['reg_true'].flatten(),
+        'reg_pred': predictions['reg_pred'].flatten(),
+        'cls_true': predictions['cls_true'],
+        'cls_pred': predictions['cls_pred']
+    })
+    pred_df.to_csv(output_dir / 'predictions.csv', index=False)
     click.echo(f"Saved predictions to {output_dir / 'predictions.csv'}")
 
     # Save model
@@ -268,7 +278,6 @@ def train_mtl(features, metadata, reg_target, cls_target, output, num_pcs, hidde
     click.echo(f"  Regression MAE:  {metrics['mae']:.4f}")
     click.echo(f"  Regression R²:   {metrics['r2']:.4f}")
     click.echo(f"  Classification Accuracy: {metrics['accuracy']:.4f}")
-    click.echo(f"  Classification F1:       {metrics['f1']:.4f}")
 
 
 @cli.command()

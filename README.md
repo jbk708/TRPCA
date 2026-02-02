@@ -1,9 +1,7 @@
 # TRPCA: Transformer-based Robust Principal Component Analysis for Microbiome Data
 
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue)]()
+[![Python](https://img.shields.io/badge/python-3.8--3.11-blue)]()
 [![PyTorch](https://img.shields.io/badge/PyTorch-1.8%2B-red)]()
-
-A PyTorch-based framework for analyzing microbiome data using normalized transformers with multi-task learning capabilities. This implementation includes both single-task regression and multi-task learning approaches, specifically designed for microbiome feature analysis.
 
 A PyTorch-based framework for analyzing microbiome data using normalized transformers with multi-task learning capabilities. This framework supports both single-task regression and multi-task learning (regression + classification) scenarios.
 
@@ -32,33 +30,56 @@ A PyTorch-based framework for analyzing microbiome data using normalized transfo
 
 ## 📋 Prerequisites
 
-Before installing, ensure you have Python 3.8+ and PyTorch 1.8+ installed. Then install the following dependencies:
-
-```bash
-# Core dependencies
-pip install torch numpy pandas scikit-learn
-
-# Microbiome analysis
-pip install biom-format
-pip install gemelli
-
-# Visualization and analysis
-pip install matplotlib seaborn shap optuna tqdm
-```
+- Python 3.8-3.11 (required due to gemelli/scikit-bio dependencies)
+- PyTorch 1.8+
 
 ## 🛠️ Installation
 
-1. Clone the repository:
+### Using uv (recommended)
+
 ```bash
-git clone https://github.com/tydymy/TRPCA.git
+# Clone the repository
+git clone https://github.com/jbk708/TRPCA.git
 cd TRPCA
-git checkout trpca_v1
+
+# Create environment with Python 3.11
+uv venv .venv --python 3.11
+source .venv/bin/activate
+
+# Install build dependencies first (required for gemelli/iow)
+uv pip install numpy setuptools wheel Cython
+
+# Install TRPCA with all dependencies
+uv pip install -e . --no-build-isolation
 ```
 
-2. Install in development mode:
+### Using pip
+
 ```bash
+# Clone the repository
+git clone https://github.com/jbk708/TRPCA.git
+cd TRPCA
+
+# Ensure you're using Python 3.8-3.11
 pip install -e .
 ```
+
+## 🖥️ Command Line Interface
+
+TRPCA includes a CLI for training and evaluation:
+
+```bash
+# Single-task regression
+trpca train -f data/features.csv -m data/metadata.csv -t target_column -o output/
+
+# Multi-task learning (regression + classification)
+trpca train-mtl -f data/features.csv -m data/metadata.csv -r reg_col -c cls_col -o output/
+
+# With hyperparameter optimization
+trpca train -f data/features.csv -m data/metadata.csv -t target --use-optuna --n-trials 10
+```
+
+Run `trpca --help` for all available options.
 
 ## 🚀 Quick Start
 
