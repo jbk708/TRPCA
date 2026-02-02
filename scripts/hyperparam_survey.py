@@ -3,6 +3,7 @@
 Hyperparameter survey script for TRPCA.
 
 This script systematically explores hyperparameter combinations and logs results.
+Supports parallel execution on the same GPU.
 """
 
 import subprocess
@@ -12,10 +13,18 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import threading
+import os
 
 
-def run_experiment(config, features, metadata, target, device, base_output_dir):
+# Thread-safe results storage
+results_lock = threading.Lock()
+
+
+def run_experiment(args_tuple):
     """Run a single training experiment with given hyperparameters."""
+    config, features, metadata, target, device, base_output_dir, worker_id = args_tuple
 
     # Create unique output directory for this run
     run_name = (
@@ -25,7 +34,7 @@ def run_experiment(config, features, metadata, target, device, base_output_dir):
         f"pd{config['projection_dim']}_"
         f"bs{config['batch_size']}"
     )
-    output_dir = base_output_dir / run_name
+    output_dir = Path(base_output_dir) / run_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Build command
@@ -45,10 +54,7 @@ def run_experiment(config, features, metadata, target, device, base_output_dir):
         "--no-optuna",  # Disable Optuna for survey (we're doing our own search)
     ]
 
-    print(f"\n{'='*60}")
-    print(f"Running: {run_name}")
-    print(f"Command: {' '.join(cmd)}")
-    print(f"{'='*60}")
+    print(f"[Worker {worker_id}] Starting: {run_name}")
 
     # Run training
     try:
@@ -64,32 +70,40 @@ def run_experiment(config, features, metadata, target, device, base_output_dir):
         if metrics_file.exists():
             with open(metrics_file) as f:
                 metrics = json.load(f)
+            print(f"[Worker {worker_id}] Completed: {run_name} | R²={metrics.get('r2', 'N/A'):.4f}")
             return {
                 **config,
                 **metrics,
                 "status": "success",
-                "output_dir": str(output_dir)
+                "output_dir": str(output_dir),
+                "run_name": run_name
             }
         else:
+            print(f"[Worker {worker_id}] Failed: {run_name}")
             return {
                 **config,
                 "status": "failed",
                 "error": result.stderr[:500] if result.stderr else "No metrics file created",
-                "output_dir": str(output_dir)
+                "output_dir": str(output_dir),
+                "run_name": run_name
             }
 
     except subprocess.TimeoutExpired:
+        print(f"[Worker {worker_id}] Timeout: {run_name}")
         return {
             **config,
             "status": "timeout",
-            "output_dir": str(output_dir)
+            "output_dir": str(output_dir),
+            "run_name": run_name
         }
     except Exception as e:
+        print(f"[Worker {worker_id}] Error: {run_name} - {e}")
         return {
             **config,
             "status": "error",
             "error": str(e),
-            "output_dir": str(output_dir)
+            "output_dir": str(output_dir),
+            "run_name": run_name
         }
 
 
@@ -100,6 +114,10 @@ def main():
     parser.add_argument("-t", "--target", required=True, help="Target column name")
     parser.add_argument("-o", "--output", default="hyperparam_survey", help="Output directory")
     parser.add_argument("--device", default="cuda", choices=["cuda", "mps", "cpu", "auto"], help="Device")
+
+    # Parallelization
+    parser.add_argument("-w", "--workers", type=int, default=1,
+                        help="Number of parallel workers (default: 1, try 4-8 for underutilized GPU)")
 
     # Hyperparameter ranges
     parser.add_argument("--num-pcs", nargs="+", type=int, default=[32, 48, 64, 128],
@@ -137,6 +155,7 @@ def main():
     configs = [dict(zip(keys, combo)) for combo in combinations]
 
     print(f"Total experiments to run: {len(configs)}")
+    print(f"Parallel workers: {args.workers}")
     print(f"Parameter grid:")
     for key, values in param_grid.items():
         print(f"  {key}: {values}")
@@ -149,37 +168,72 @@ def main():
             "metadata": args.metadata,
             "target": args.target,
             "device": args.device,
+            "workers": args.workers,
             "param_grid": param_grid,
             "total_experiments": len(configs),
             "start_time": datetime.now().isoformat(),
         }, f, indent=2)
 
-    # Run experiments
+    # Prepare arguments for parallel execution
+    task_args = [
+        (config, args.features, args.metadata, args.target, args.device, str(base_output_dir), i % args.workers)
+        for i, config in enumerate(configs)
+    ]
+
+    # Run experiments in parallel
     results = []
-    for i, config in enumerate(configs, 1):
-        print(f"\n[{i}/{len(configs)}]")
-        result = run_experiment(
-            config=config,
-            features=args.features,
-            metadata=args.metadata,
-            target=args.target,
-            device=args.device,
-            base_output_dir=base_output_dir
-        )
-        results.append(result)
+    completed = 0
 
-        # Save intermediate results after each experiment
-        results_df = pd.DataFrame(results)
-        results_df.to_csv(base_output_dir / "survey_results.csv", index=False)
+    if args.workers == 1:
+        # Sequential execution
+        for i, task_arg in enumerate(task_args, 1):
+            print(f"\n[{i}/{len(configs)}]")
+            result = run_experiment(task_arg)
+            results.append(result)
 
-        # Print current best
-        successful = [r for r in results if r.get('status') == 'success']
-        if successful:
-            # Sort by R² (higher is better), then by MAE (lower is better)
-            best = sorted(successful, key=lambda x: (-x.get('r2', -999), x.get('mae', 999)))[0]
-            print(f"\nCurrent best: R²={best.get('r2', 'N/A'):.4f}, MAE={best.get('mae', 'N/A'):.4f}")
-            print(f"  Config: pcs={best['num_pcs']}, hidden={best['hidden_dim']}, "
-                  f"layers={best['num_layers']}, proj={best['projection_dim']}, batch={best['batch_size']}")
+            # Save intermediate results
+            results_df = pd.DataFrame(results)
+            results_df.to_csv(base_output_dir / "survey_results.csv", index=False)
+
+            # Print current best
+            successful = [r for r in results if r.get('status') == 'success']
+            if successful:
+                best = sorted(successful, key=lambda x: (-x.get('r2', -999), x.get('mae', 999)))[0]
+                print(f"Current best: R²={best.get('r2', 'N/A'):.4f}, MAE={best.get('mae', 'N/A'):.4f}")
+    else:
+        # Parallel execution
+        print(f"\nStarting parallel execution with {args.workers} workers...")
+        print("="*60)
+
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
+            # Submit all tasks
+            future_to_config = {executor.submit(run_experiment, arg): arg[0] for arg in task_args}
+
+            for future in as_completed(future_to_config):
+                completed += 1
+                try:
+                    result = future.result()
+                    results.append(result)
+
+                    # Save intermediate results (thread-safe via file system)
+                    results_df = pd.DataFrame(results)
+                    results_df.to_csv(base_output_dir / "survey_results.csv", index=False)
+
+                    # Progress update
+                    successful = [r for r in results if r.get('status') == 'success']
+                    if successful:
+                        best = sorted(successful, key=lambda x: (-x.get('r2', -999), x.get('mae', 999)))[0]
+                        print(f"[{completed}/{len(configs)}] Best so far: R²={best.get('r2', 'N/A'):.4f} "
+                              f"(pcs={best['num_pcs']}, hd={best['hidden_dim']}, nl={best['num_layers']})")
+                    else:
+                        print(f"[{completed}/{len(configs)}] No successful runs yet")
+
+                except Exception as e:
+                    print(f"[{completed}/{len(configs)}] Task failed with exception: {e}")
+                    results.append({
+                        "status": "error",
+                        "error": str(e)
+                    })
 
     # Final summary
     print("\n" + "="*60)
@@ -197,11 +251,12 @@ def main():
         successful_df = successful_df.sort_values('r2', ascending=False)
 
         print(f"\nSuccessful runs: {len(successful_df)}/{len(configs)}")
-        print("\nTop 5 configurations by R²:")
+        print("\nTop 10 configurations by R²:")
         print("-" * 60)
 
         top_cols = ['num_pcs', 'hidden_dim', 'num_layers', 'projection_dim', 'batch_size', 'r2', 'mae', 'rmse']
-        print(successful_df[top_cols].head(10).to_string(index=False))
+        available_cols = [c for c in top_cols if c in successful_df.columns]
+        print(successful_df[available_cols].head(10).to_string(index=False))
 
         # Save top configurations
         successful_df.to_csv(base_output_dir / "best_configs.csv", index=False)
